@@ -20,18 +20,20 @@ func flatten{{$.GetPrefix}}{{$.TitlelizeProperty}}(v interface{}, d *schema.Reso
 	}
 	transformed := make(map[string]interface{})
 
-	// The API does not return spendCap.inputState. Use the API value if it is
-	// ever present, else keep the value from state or config, else (on import)
-	// derive it from outputState.
-	inputState := original["inputState"]
-	if inputState == nil {
-		if s, ok := d.GetOk("{{ join $.Lineage ".0." }}.0.input_state"); ok {
-			inputState = s
-		} else if original["outputState"] == "AWAITING_NEXT_PERIOD" {
-			inputState = "AWAITING_NEXT_PERIOD"
-		} else {
-			inputState = "CONFIGURED"
-		}
+	// The API does not return spendCap.inputState. A cap lifted until the next
+	// period (outputState AWAITING_NEXT_PERIOD) is reported as such, so a cap
+	// lifted outside Terraform shows as drift. Otherwise use the API value if
+	// it is ever present, else keep the value from state or config, else (on
+	// import) use CONFIGURED.
+	var inputState interface{}
+	if original["outputState"] == "AWAITING_NEXT_PERIOD" {
+		inputState = "AWAITING_NEXT_PERIOD"
+	} else if apiInputState, ok := original["inputState"]; ok && apiInputState != nil {
+		inputState = apiInputState
+	} else if s, ok := d.GetOk("{{ join $.Lineage ".0." }}.0.input_state"); ok {
+		inputState = s
+	} else {
+		inputState = "CONFIGURED"
 	}
 	transformed["input_state"] = inputState
 	transformed["output_state"] = original["outputState"]
