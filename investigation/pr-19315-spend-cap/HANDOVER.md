@@ -21,9 +21,9 @@ PR 19315 adds a `spend_cap` block to `google_billing_budget`. A maintainer block
 caps exclude those. We also found three real bugs that would fail the PR right after the 400 is gone: a permadiff on
 `input_state`, a wrong update mask on every update of a capped budget, and an update plan that the API refuses when a
 cap is added to an existing budget. These are fixed on this branch, tested end to end on a real organization, and
-reviewed adversarially in four rounds. What remains: the round-4 description fixes, the clean branches, and every
-GitHub write (fork PR, two upstream draft PRs, one comment, subscriptions). Each GitHub write needs the owner's
-approval first.
+reviewed adversarially in four rounds. The round-4 description fixes are done (`f08a4efea`), and the three clean branches exist locally (section f).
+What remains: the owner's review, the variant A acceptance run, and every GitHub write (fork PR, two upstream draft
+PRs, one comment, subscriptions). Each GitHub write needs the owner's approval first.
 
 ## b. Branch anatomy
 
@@ -38,9 +38,10 @@ Listed oldest first. "mmv1" means the commit changes provider code; "investigati
 | `5d93a7ccc` | Claude | mmv1 | **Code fix 2.** Mask `spendCap` on removal; one service per spend-cap test; descriptions. |
 | `f5b84d80a` | Claude | mmv1 | **Code fix 3.** CustomizeDiff ForceNew when a cap is added; flatten simplified; test `TestAccBillingBudget_spendCapAdd`. |
 | `96a871a60` | Claude | mmv1 | **Code fix 4.** CustomizeDiff split for unit testing; `TestUnitBillingBudget_spendCapAddedCustomizeDiff`; descriptions. |
+| `f08a4efea` | Claude | mmv1 | **Code fix 5.** Round-4 description wording; unit-test case with no prior value. |
 | (this commit) | Claude | investigation | The whole investigation directory: reports, probes, test results, reviews, handover, `.env.example`. |
 
-The code fixes are `2a441756e`, `5d93a7ccc`, `f5b84d80a`, `96a871a60`. They change only `mmv1/`, and all of them go to
+The code fixes are `2a441756e`, `5d93a7ccc`, `f5b84d80a`, `96a871a60`, `f08a4efea`. They change only `mmv1/`, and all of them go to
 the clean branch.
 
 History rewrite (2026-10-28): the branch was rewritten to remove real identifiers from old commits. The code-fix
@@ -342,7 +343,7 @@ git worktree add ../mm-fix -b fix/spend-cap-input-state-mask b1edf518a
 cd ../mm-fix
 git config user.name  "Robert Żegleń"
 git config user.email "rzeglen@gmail.com"
-for c in 2a441756e 5d93a7ccc f5b84d80a 96a871a60; do     # add the round-4 commit here
+for c in 2a441756e 5d93a7ccc f5b84d80a 96a871a60 f08a4efea; do
   git diff "$c^" "$c" -- mmv1 | git apply --index
   git commit --author="Robert Żegleń <rzeglen@gmail.com>" -F - <<MSG
 $(git log -1 --format=%s "$c")
@@ -448,11 +449,28 @@ it, and that PR 19315 has priority.
 
 ## g. Not done / open
 
-### First local task: description wording fixes from review round 4 (not yet applied)
+### Local status (2026-10-28)
 
-The code and the unit test passed mutation testing in round 4 and need no change. Only the wording below is open.
-Source: `reviews/review-fix-round4.md`. Apply on this draft branch, regenerate, re-run the tests, then build the
-clean branch.
+Done locally, nothing pushed:
+
+- The round-4 wording fixes below are applied in `f08a4efea`, items 1 to 6. Item 1 drops the unverified sentence
+  "other fields cannot be changed without re-sending `CONFIGURED`" and says instead that an update made while the
+  cap is lifted re-sends the current value. Item 5 follows the Google page: only display name, amount, project and
+  service can change, and none of them while the cap is enforced.
+- Tests after the fix: beta and GA, the unit test, the three spend-cap tests and the regression set all pass
+  (`fix-test-results.md`, Round 5).
+- Clean branches, local only, authored by the owner, unsigned, `Co-authored-by` Ilia on each commit, only `mmv1/`:
+  - `fix/spend-cap-input-state-mask` on `b1edf518a`: the five code-fix commits. Its `mmv1/` tree is identical to
+    this draft branch, so the Round 5 results apply to it.
+  - `spend-cap-variant-b` on the fix branch: `exclude_test: true` with the comment. Generated and vetted.
+  - `spend-cap-variant-a` on the fix branch: own `google_project` on `BILLING_ACCT`, no `currency_code`. Generated
+    and vetted, NOT run: the service account cannot create projects in the organization.
+- Worktrees: `<parent>/mm-spendcap` (this branch), `<parent>/mm-fix`, `<parent>/mm-variant-a`,
+  `<parent>/mm-variant-b`.
+
+### Round-4 wording fixes (applied in `f08a4efea`)
+
+Source: `reviews/review-fix-round4.md`.
 
 | # | Where | Finding | Proposed fix |
 |---|---|---|---|
@@ -476,8 +494,8 @@ clean branch.
   Decide before opening the drafts: move them the same way in each variant, or leave them and say so in the bodies.
 - **Re-arm after a lift is untestable** without real spend that enforces a cap. Whether re-sending `CONFIGURED`
   re-activates a lifted cap is unverified (round 2 F2, round 3 F2, round 4 F2).
-- **GA acceptance tests** were run only for `spendCapAdd` and `spendCapUpdate` (plus the GA unit test). The spend-cap
-  example and the regression tests ran on beta only.
+- **Variant A is not run.** It needs `resourcemanager.projects.create` on the organization, which the service
+  account does not have. Grant it, or run the test with an identity that has it, before opening variant A.
 - **Sweeper and overlap.** `exclude_sweeper: true` means a leaked cap blocks later runs on the same project and
   service. Delete it by hand (section e). A sweeper is a possible follow-up (round 3 F6).
 

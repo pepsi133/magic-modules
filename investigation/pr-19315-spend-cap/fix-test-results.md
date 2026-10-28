@@ -266,3 +266,46 @@ Requests: spendCapAdd POST (regular), DELETE `aebf48b3`, POST (capped); spendCap
 Checks: `go vet` and `gofmt -l` clean on the billingbudgets package in beta and GA; mmv1 `go test ./...` ok;
 `gofmt -l` on the mmv1 test files clean; `yamllint` clean; `template-check unused-tmpl` and `version-guard` on the
 three templates exit 0. Budgets list `{}` before and after.
+
+## Round 5 (local machine, after the round-4 wording fixes, 2026-10-28)
+
+Commit `f08a4efea` on the draft branch: the round-4 description fixes (HANDOVER section g, items 1 to 5) and the
+optional unit-test case from item 6 (`spend_cap added, no prior value`: `before: nil`, ForceNew).
+
+Generation: `make provider USE_BAZEL=0 PRODUCT=billingbudgets` for beta (downstream `7e21030c`) and GA (`4abc5c96`).
+
+Unit test, beta and GA: `TestUnitBillingBudget_spendCapAddedCustomizeDiff` PASS (7 subtests).
+
+Acceptance, beta, PLN edits, service account key, `-parallel 8`:
+
+```
+--- PASS: TestBillingBudgetStateUpgradeV0 (0.00s)
+--- PASS: TestAccBillingBudgetsBudget_billingBudgetBasicExample (23.53s)
+--- PASS: TestAccBillingBudgetsBudget_billingBudgetSpendCapExample (24.47s)
+--- PASS: TestAccBillingBudget_spendCapAdd (31.78s)
+--- PASS: TestAccBillingBudget_spendCapUpdate (47.30s)
+--- PASS: TestAccBillingBudget_billingBudgetUpdate (74.14s)
+ok  	github.com/hashicorp/terraform-provider-google-beta/google-beta/services/billingbudgets	74.196s
+```
+
+Acceptance, GA, same set (this closes the GA gap from round 3):
+
+```
+--- PASS: TestBillingBudgetStateUpgradeV0 (0.00s)
+--- PASS: TestAccBillingBudgetsBudget_billingBudgetBasicExample (18.42s)
+--- PASS: TestAccBillingBudgetsBudget_billingBudgetSpendCapExample (21.80s)
+--- PASS: TestAccBillingBudget_spendCapAdd (27.32s)
+--- PASS: TestAccBillingBudget_spendCapUpdate (41.72s)
+--- PASS: TestAccBillingBudget_billingBudgetUpdate (73.97s)
+ok  	github.com/hashicorp/terraform-provider-google/google/services/billingbudgets	74.023s
+```
+
+Checks: `go vet` clean on beta and GA; `gofmt -l` clean on the mmv1 test files and both downstream packages; mmv1
+`go test ./...` ok. Budgets list empty after both runs.
+
+Variants (beta, generation and `go vet` only):
+
+- Variant B: the generated `TestAccBillingBudgetsBudget_billingBudgetSpendCapExample` is gone; the package vets clean.
+- Variant A: the generated test creates `google_project` with `org_id` and `billing_acct` from `GetTestOrgFromEnv` and
+  `GetTestBillingAccountFromEnv`; the package vets clean. Not run: the service account has no
+  `resourcemanager.projects.create` on the organization (`testIamPermissions` returns `{}`).
