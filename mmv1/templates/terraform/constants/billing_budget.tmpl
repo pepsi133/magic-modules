@@ -25,12 +25,21 @@ func checkValAndDefaultStringSuppress(defaultVal string, checkVal string) schema
 // so adding a spend_cap block replaces the budget. Removing the block is an
 // in-place update.
 func billingBudgetSpendCapAddedCustomizeDiff(_ context.Context, d *schema.ResourceDiff, meta interface{}) error {
-	if d.Id() == "" {
+	return billingBudgetSpendCapAddedCustomizeDiffFunc(d, d.Id())
+}
+
+// billingBudgetSpendCapAddedCustomizeDiffFunc holds the logic of
+// billingBudgetSpendCapAddedCustomizeDiff. id is the resource ID, empty when
+// the budget is being created.
+func billingBudgetSpendCapAddedCustomizeDiffFunc(diff tpgresource.TerraformResourceDiff, id string) error {
+	if id == "" {
 		return nil
 	}
-	o, n := d.GetChange("spend_cap")
-	if len(o.([]interface{})) == 0 && len(n.([]interface{})) > 0 {
-		return d.ForceNew("spend_cap")
+	o, n := diff.GetChange("spend_cap")
+	oldCap, _ := o.([]interface{})
+	newCap, _ := n.([]interface{})
+	if len(oldCap) == 0 && len(newCap) > 0 {
+		return diff.ForceNew("spend_cap")
 	}
 	return nil
 }
