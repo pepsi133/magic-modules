@@ -1,0 +1,914 @@
+
+===== (a) billing info of project ${GOOGLE_PROJECT} (H2) =====
+>>> GET https://cloudbilling.googleapis.com/v1/projects/${GOOGLE_PROJECT}/billingInfo
+<<< HTTP 200
+{
+  "name": "projects/${GOOGLE_PROJECT}/billingInfo",
+  "projectId": "${GOOGLE_PROJECT}",
+  "billingAccountName": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}",
+  "billingEnabled": true
+}
+
+===== (a2) billing account ${GOOGLE_BILLING_ACCOUNT} (H3 masterBillingAccount, H4 currencyCode) =====
+>>> GET https://cloudbilling.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}",
+  "open": true,
+  "displayName": "My Billing Account",
+  "masterBillingAccount": "",
+  "parent": "organizations/${GOOGLE_ORG}",
+  "currencyCode": "PLN"
+}
+
+===== (b) subaccounts of billingAccounts/${GOOGLE_BILLING_ACCOUNT} (non-empty = reseller-style parent, H3) =====
+>>> GET https://cloudbilling.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/subAccounts
+<<< HTTP 200
+{
+  "billingAccounts": [],
+  "nextPageToken": ""
+}
+
+===== (b2) eligible service APIs on project ${GOOGLE_PROJECT_NUMBER} (H5) =====
+aiplatform.googleapis.com: DISABLED
+generativelanguage.googleapis.com: DISABLED
+
+===== (b3) existing budgets before probes (H6) =====
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+<<< HTTP 200
+{}
+
+===== (c) create WITHOUT schemaVersion (documented body), service C7E2-9256-1C43, PLN =====
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+>>> body:
+{
+  "displayName": "probe-c-no-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1.0,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "spendCap": {
+    "inputState": "CONFIGURED"
+  }
+}
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f",
+  "displayName": "probe-c-no-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210057510243",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+### (c): CREATED billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+--- GET once after create (record spendCap.outputState / reconciling)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f",
+  "displayName": "probe-c-no-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210057510243",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+spendCap on GET: {"outputState":"CONFIGURED"}
+
+===== (c-u1) PATCH updateMask=amount only, amount 6 PLN (does the API demand spendCap.inputState in the mask?) =====
+>>> PATCH https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f?updateMask=amount
+>>> body:
+{
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "6"
+    }
+  }
+}
+<<< HTTP 400
+{
+  "error": {
+    "code": 400,
+    "message": "Request contains an invalid argument.",
+    "status": "INVALID_ARGUMENT"
+  }
+}
+
+===== (c-u2) PATCH updateMask=spendCap.inputState, inputState AWAITING_NEXT_PERIOD =====
+>>> PATCH https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f?updateMask=spendCap.inputState
+>>> body:
+{
+  "spendCap": {
+    "inputState": "AWAITING_NEXT_PERIOD"
+  }
+}
+<<< HTTP 400
+{
+  "error": {
+    "code": 400,
+    "message": "Request contains an invalid argument.",
+    "status": "INVALID_ARGUMENT"
+  }
+}
+--- GET after updates
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f",
+  "displayName": "probe-c-no-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210057510243",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+amount/spendCap after updates: {"amount":{"specifiedAmount":{"currencyCode":"PLN","units":"5"}},"spendCap":{"outputState":"CONFIGURED"}}
+
+===== cleanup of (c) =====
+>>> DELETE https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+<<< HTTP 200
+{}
+--- confirm deletion of billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f (expect 404)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+<<< HTTP 404
+{
+  "error": {
+    "code": 404,
+    "message": "Requested entity was not found.",
+    "status": "NOT_FOUND"
+  }
+}
+
+===== (d) create WITH notificationsRule.schemaVersion 1.0, service C7E2-9256-1C43, PLN =====
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+>>> body:
+{
+  "displayName": "probe-d-with-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1.0,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "schemaVersion": "1.0",
+    "enableProjectLevelRecipients": true
+  },
+  "spendCap": {
+    "inputState": "CONFIGURED"
+  }
+}
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd",
+  "displayName": "probe-d-with-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210061292275",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+### (d): CREATED billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd
+--- GET once after create (record spendCap.outputState / reconciling)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd",
+  "displayName": "probe-d-with-schemaversion-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210061292275",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+spendCap on GET: {"outputState":"CONFIGURED"}
+>>> DELETE https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd
+<<< HTTP 200
+{}
+--- confirm deletion of billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd (expect 404)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd
+<<< HTTP 404
+{
+  "error": {
+    "code": 404,
+    "message": "Requested entity was not found.",
+    "status": "NOT_FOUND"
+  }
+}
+
+===== (e) create WITHOUT schemaVersion, service AEFD-7695-64FA (Gemini API), PLN =====
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+>>> body:
+{
+  "displayName": "probe-e-gemini-api-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/AEFD-7695-64FA"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1.0,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "spendCap": {
+    "inputState": "CONFIGURED"
+  }
+}
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906",
+  "displayName": "probe-e-gemini-api-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/AEFD-7695-64FA"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210063764304",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+### (e): CREATED billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906
+--- GET once after create (record spendCap.outputState / reconciling)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906",
+  "displayName": "probe-e-gemini-api-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/AEFD-7695-64FA"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210063764304",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+spendCap on GET: {"outputState":"CONFIGURED"}
+>>> DELETE https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906
+<<< HTTP 200
+{}
+--- confirm deletion of billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906 (expect 404)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906
+<<< HTTP 404
+{
+  "error": {
+    "code": 404,
+    "message": "Requested entity was not found.",
+    "status": "NOT_FOUND"
+  }
+}
+
+===== (g) create with provider-shaped body for the PR sample (schemaVersion 1.0), PLN =====
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+>>> body:
+{
+  "displayName": "Example Spend Cap Budget1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1.0,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "schemaVersion": "1.0",
+    "enableProjectLevelRecipients": true
+  },
+  "spendCap": {
+    "inputState": "CONFIGURED"
+  }
+}
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b",
+  "displayName": "Example Spend Cap Budget1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210066616292",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+### (g): CREATED billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b
+--- GET once after create (record spendCap.outputState / reconciling)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b
+<<< HTTP 200
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b",
+  "displayName": "Example Spend Cap Budget1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210066616292",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+spendCap on GET: {"outputState":"CONFIGURED"}
+>>> DELETE https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b
+<<< HTTP 200
+{}
+--- confirm deletion of billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b (expect 404)
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b
+<<< HTTP 404
+{
+  "error": {
+    "code": 404,
+    "message": "Requested entity was not found.",
+    "status": "NOT_FOUND"
+  }
+}
+
+===== (h) body (c) but currencyCode USD (H4) =====
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+>>> body:
+{
+  "displayName": "probe-h-usd-1793210053",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "USD",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1.0,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "spendCap": {
+    "inputState": "CONFIGURED"
+  }
+}
+<<< HTTP 400
+{
+  "error": {
+    "code": 400,
+    "message": "Request contains an invalid argument.",
+    "status": "INVALID_ARGUMENT"
+  }
+}
+### (h): NOT CREATED (HTTP 400)
+
+===== final: list budgets (expect no probe budget) =====
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+<<< HTTP 200
+{}
+no probe budget remains
+
+budgets created by this run:
+  billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/bf15b26e-f159-469a-92f4-780d396a4f0f
+  billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/ffb76cc9-d335-476d-9a2e-102bcc39d8cd
+  billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/8baf51f3-3d7f-469a-9f1f-8fb854abb906
+  billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/e66918db-447c-4d2e-9f67-dd5eafb66c6b
+leftover budgets (delete failed twice):
+  (none)
+
+===== SUPPLEMENTAL (run after the main script, same day): control for (c-u1) =====
+Create body (c) again, then PATCH amount with updateMask=amount,spendCap.inputState (inputState CONFIGURED), then delete.
+>>> POST https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets
+{"displayName":"probe-c2-control-1793210099","budgetFilter":{"projects":["projects/${GOOGLE_PROJECT_NUMBER}"],"services":["services/C7E2-9256-1C43"],"creditTypesTreatment":"EXCLUDE_ALL_CREDITS","calendarPeriod":"MONTH"},"amount":{"specifiedAmount":{"currencyCode":"PLN","units":"5"}},"thresholdRules":[{"thresholdPercent":0.5,"spendBasis":"CURRENT_SPEND"},{"thresholdPercent":0.8,"spendBasis":"CURRENT_SPEND"},{"thresholdPercent":1.0,"spendBasis":"CURRENT_SPEND"}],"notificationsRule":{"enableProjectLevelRecipients":true},"spendCap":{"inputState":"CONFIGURED"}}
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff",
+  "displayName": "probe-c2-control-1793210099",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "5"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210100965946",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+
+HTTP 200
+>>> PATCH https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff?updateMask=amount,spendCap.inputState
+{"amount":{"specifiedAmount":{"currencyCode":"PLN","units":"6"}},"spendCap":{"inputState":"CONFIGURED"}}
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff",
+  "displayName": "probe-c2-control-1793210099",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "6"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210101635647",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+
+HTTP 200
+>>> PATCH https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff?updateMask=amount.specifiedAmount,spendCap.inputState (API guide's own mask)
+{"amount":{"specifiedAmount":{"currencyCode":"PLN","units":"7"}},"spendCap":{"inputState":"CONFIGURED"}}
+{
+  "name": "billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff",
+  "displayName": "probe-c2-control-1793210099",
+  "budgetFilter": {
+    "projects": [
+      "projects/${GOOGLE_PROJECT_NUMBER}"
+    ],
+    "services": [
+      "services/C7E2-9256-1C43"
+    ],
+    "creditTypesTreatment": "EXCLUDE_ALL_CREDITS",
+    "calendarPeriod": "MONTH"
+  },
+  "amount": {
+    "specifiedAmount": {
+      "currencyCode": "PLN",
+      "units": "7"
+    }
+  },
+  "thresholdRules": [
+    {
+      "thresholdPercent": 0.5,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 0.8,
+      "spendBasis": "CURRENT_SPEND"
+    },
+    {
+      "thresholdPercent": 1,
+      "spendBasis": "CURRENT_SPEND"
+    }
+  ],
+  "notificationsRule": {
+    "enableProjectLevelRecipients": true
+  },
+  "etag": "1793210102098463",
+  "spendCap": {
+    "outputState": "CONFIGURED"
+  }
+}
+
+HTTP 200
+>>> DELETE https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff
+{}
+ HTTP 200
+>>> GET https://billingbudgets.googleapis.com/v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets/25b048b3-2c4b-4c8c-a1fe-388ed61bceff (expect 404)
+{"error":{"code":404,"message":"Requested entity was not found.","status":"NOT_FOUND"}}
+>>> final list
+{}
+
+HTTP 200
