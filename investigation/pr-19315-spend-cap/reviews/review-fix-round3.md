@@ -1,6 +1,6 @@
-# Adversarial review, round 3: commit 1c847590d (branch claude/great-galileo-1gggv5)
+# Adversarial review, round 3: commit f5b84d80a (branch claude/great-galileo-1gggv5)
 
-Scope: `git show 1c847590d -- mmv1/` on top of cc69ec67b and c3a311883 (change set b1edf518a..1c847590d, 5 files under mmv1/). No edits were made in /home/user/magic-modules (`git status --short` is empty at the end) and no git write commands were run anywhere.
+Scope: `git show f5b84d80a -- mmv1/` on top of 2a441756e and 5d93a7ccc (change set b1edf518a..f5b84d80a, 5 files under mmv1/). No edits were made in /home/user/magic-modules (`git status --short` is empty at the end) and no git write commands were run anywhere.
 
 ## Attempts
 
@@ -114,7 +114,7 @@ Misleading / incomplete (see findings F1, F2, F5):
 - The public doc also says "You can't delete a spend cap budget while it's enforced." That matters for Terraform (destroy and the new replacement path both fail while enforced) and is not mentioned.
 - Rendering: mmv1 collapses the blank line inside the description, so the `input_state` entry renders as one 15-line paragraph that mixes API behaviour, Terraform behaviour and HTTP details.
 
-### T6. Upstream fit (b1edf518a..1c847590d -- mmv1/)
+### T6. Upstream fit (b1edf518a..f5b84d80a -- mmv1/)
 
 - custom_diff vs ForceNew on the field: `immutable: true` on `spendCap` would also force replacement on removal and on `input_state` changes (needed to lift a cap), so a conditional `ForceNew` in a CustomizeDiff is the right tool and is exactly what docs/content/best-practices/immutable-fields.md prescribes ("call `diff.ForceNew` inside a `CustomizeDiff` if the appropriate conditions to allow update in place are not met"). The same page says "Any `CustomizeDiff` function like this must be thoroughly unit tested." There is no unit test (finding F3). The function takes `*schema.ResourceDiff`, so it cannot be driven by `tpgresource.ResourceDiffMock` (mmv1/third_party/terraform/tpgresource/resource_test_utils.go:85) as spanner_database and container do.
 - `%{service}` parameterisation: fine; follows `acctest.Nprintf` conventions, and the comment on TestAccBillingBudget_spendCapUpdate documents which service each test owns. Service IDs are stable public SKUs.

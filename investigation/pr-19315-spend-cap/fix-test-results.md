@@ -1,4 +1,4 @@
-# Fix verification: spend_cap input_state permadiff and update mask (2026-10-28)
+# Fix verification: spend_cap input_state permadiff and update mask (2026-10-28 to 2026-10-29)
 
 Provider: `terraform-provider-google-beta` at `7e21030c`, `billingbudgets` regenerated from this branch with the fix
 (`make provider VERSION=beta PRODUCT=billingbudgets`). The test billing account (PLN), project
@@ -7,6 +7,10 @@ Provider: `terraform-provider-google-beta` at `7e21030c`, `billingbudgets` regen
 Local-only edits in the downstream checkout (not in `mmv1/`): currency `USD` -> `PLN` and amount -> `5` in the
 generated `billingBudgetSpendCap` and `billingBudgetBasic` configs, and `PLN`, units `5` -> `6` in the handwritten
 `TestAccBillingBudget_spendCapUpdate` config (committed code keeps `USD`, units `100` -> `200`).
+
+Note added on 2026-10-29: the committed basic example uses units `100000`. The sed in HANDOVER section e changes
+the amount only in the spend-cap sample, so the basic example keeps units `100000` in the rounds that used that sed.
+The basic example amount above is how this round was recorded. It was not re-checked.
 
 Logs were checked for OAuth access tokens, private keys and `Bearer` headers before excerpting: no matches (only the provider's
 "authenticating using configured Google JSON 'access_token'" message).
@@ -104,7 +108,7 @@ All API responses across the update test: 42 x `200 OK`, 1 x `404 Not Found` (th
 `GET /v1/billingAccounts/${GOOGLE_BILLING_ACCOUNT}/budgets` -> `{}` before and after the runs. Budgets created and deleted
 by the tests: `6e24d87e` (spend-cap example), `1f3a68f1` (update test), `c86e7351` (basic example).
 
-## Round 2 (after review of cc69ec67b)
+## Round 2 (after review of 2a441756e)
 
 Changes:
 
@@ -159,7 +163,7 @@ package ok; `yamllint` clean; `template-check unused-tmpl` and `version-guard` o
 Leftovers: budgets list `{}` before and after. Budgets created and deleted: `fd3d9481` (update test), `ca65381d`
 (spend-cap example), plus the basic and update regression runs.
 
-## Round 3 (after second review of c3a311883)
+## Round 3 (after second review of 5d93a7ccc)
 
 Changes:
 
@@ -218,7 +222,7 @@ Checks: `go vet` and `gofmt -l` on the downstream package clean; `gofmt -l` on t
 `go test ./...` all ok; `yamllint` clean; `template-check unused-tmpl` and `version-guard` on the three templates exit 0.
 No access token or private key in the log. Budgets list `{}` before and after.
 
-## Round 4 (after third review of 1c847590d)
+## Round 4 (after third review of f5b84d80a)
 
 Changes:
 
@@ -272,7 +276,8 @@ three templates exit 0. Budgets list `{}` before and after.
 Commit `f08a4efea` on the draft branch: the round-4 description fixes (HANDOVER section g, items 1 to 5) and the
 optional unit-test case from item 6 (`spend_cap added, no prior value`: `before: nil`, ForceNew).
 
-Generation: `make provider USE_BAZEL=0 PRODUCT=billingbudgets` for beta (downstream `7e21030c`) and GA (`4abc5c96`).
+Generation: `make provider USE_BAZEL=0 VERSION=beta OUTPUT_PATH="$TPGB" PRODUCT=billingbudgets` for beta (downstream
+`7e21030c`) and `make provider USE_BAZEL=0 VERSION=ga OUTPUT_PATH="$TPG" PRODUCT=billingbudgets` for GA (`4abc5c96`).
 
 Unit test, beta and GA: `TestUnitBillingBudget_spendCapAddedCustomizeDiff` PASS (7 subtests).
 
@@ -309,3 +314,106 @@ Variants (beta, generation and `go vet` only):
 - Variant A: the generated test creates `google_project` with `org_id` and `billing_acct` from `GetTestOrgFromEnv` and
   `GetTestBillingAccountFromEnv`; the package vets clean. Not run: the service account has no
   `resourcemanager.projects.create` on the organization (`testIamPermissions` returns `{}`).
+
+## Round 6 (local machine, variant A, 2026-10-29)
+
+Branch `spend-cap-variant-a` (`3213aa619`, the pushed first commit; its signed successor `91a7f33fe3` is a rewrite that
+changed only comments, the commit message and description strings in `Budget.yaml`; no code line differs, checked in
+git on 2026-10-29). The sample has its own `google_project` under `ORG_ID`, billed to
+`BILLING_ACCT`, and no `currency_code`. Locally `ORG_ID` is the test organization and `BILLING_ACCT` is the test
+billing account.
+
+Setup: the test service account was granted `roles/resourcemanager.projectCreator` on the test organization. This
+closes the gap from round 5, where the variant A test could not run.
+
+Generation: beta, `PRODUCT=billingbudgets`. No currency edit was needed, because the sample has no `currency_code`.
+
+Acceptance, beta, service account key:
+
+```
+--- PASS: TestAccBillingBudgetsBudget_billingBudgetSpendCapExample (59.66s)
+ok  	github.com/hashicorp/terraform-provider-google-beta/google-beta/services/billingbudgets	59.712s
+```
+
+So a spend cap on a brand-new project billed to the test billing account works end to end.
+
+GA was not run for the variant A sample.
+
+Logs were scanned for tokens and for the identifier values: 0 hits.
+
+Leftovers: budgets list empty before and after the run. The test project went to `DELETE_REQUESTED`.
+
+## Round 7 (local machine, variant B, opt-in spend-cap tests, 2026-10-29)
+
+Branch `spend-cap-variant-b`, commit `c24fbe4d0b` (signed, local). It adds
+`GOOGLE_SPEND_CAP_BILLING_ACCOUNT` with the getter `GetTestSpendCapBillingAccountFromEnv` in
+`mmv1/third_party/terraform/envvar/envvar_utils.go`. `TestAccBillingBudget_spendCapUpdate` and
+`TestAccBillingBudget_spendCapAdd` use it and skip when it is unset. The `Budget.yaml` sample comment is softened
+("likely a parent account"). CI files are not changed.
+
+The runs below are agent-reported. They ran at `c43120682`, an earlier version of the two variant B commits (its
+parent is `b56bc934a`, the pushed first commit). It is not on any branch. `git diff c43120682 c24fbe4d0b` changes
+only comments (Go, Go-template and YAML), commit messages and description strings in `Budget.yaml`; no code line differs (checked
+in git on 2026-10-29). After the
+change, gofmt, go vet and the skip check were re-run on beta (agent-reported). The record does not name the packages
+that go vet and gofmt ran on.
+
+Check on 2026-10-29 by the main session at `86ab7ec85`, an earlier signed version of this commit since superseded by
+`c24fbe4d0b` (the two differ only in comments and `Budget.yaml` description strings): beta generated into a fresh downstream
+worktree. `go vet` on `google-beta/services/billingbudgets` and `google-beta/envvar` is clean. `gofmt -l` on both is
+clean.
+
+Skip check, `TF_ACC=1`, variable unset: both tests `--- SKIP` with "Environment variable
+GOOGLE_SPEND_CAP_BILLING_ACCOUNT is not set".
+
+Variable set to the test billing account, local currency edits (PLN, units 5, 6, 7), beta:
+
+```
+--- PASS: TestAccBillingBudget_spendCapAdd (29.63s)
+--- PASS: TestAccBillingBudget_spendCapUpdate (48.56s)
+ok  	github.com/hashicorp/terraform-provider-google-beta/google-beta/services/billingbudgets	48.636s
+```
+
+GA, same setup:
+
+```
+--- PASS: TestAccBillingBudget_spendCapAdd (30.54s)
+--- PASS: TestAccBillingBudget_spendCapUpdate (58.55s)
+ok  	github.com/hashicorp/terraform-provider-google/google/services/billingbudgets	58.688s
+```
+
+Leftovers: budgets list empty before and after.
+
+## Round 8 (local machine, variant A, handwritten tests on their own project, 2026-10-29)
+
+Branch `spend-cap-variant-a`, commit `19bf3bf26e` (signed, local). The two handwritten
+spend-cap tests create their own project (`tf-test-%{random_suffix}`, under `ORG_ID`, billed to `BILLING_ACCT`,
+`deletion_policy = "DELETE"`). The budget is on `BILLING_ACCT`. `currency_code` is omitted, with an HCL comment
+(checked in git). No currency edit was needed. The runs below are agent-reported. They ran at `c05424ba4`, a
+predecessor of this commit. It is not on any branch. `git diff c05424ba4 19bf3bf26e` changes only Go comments,
+description strings in `Budget.yaml`, and two added HCL `#` comment lines inside the test configs (the `currency_code`
+note); no code line differs (checked in git on 2026-10-29).
+
+Beta, three tests in parallel:
+
+- `TestAccBillingBudget_spendCapAdd`: PASS (67.07s).
+- `TestAccBillingBudget_spendCapUpdate`: PASS (83.59s).
+- `TestAccBillingBudgetsBudget_billingBudgetSpendCapExample`: FAIL in step 1 with
+  `Error 400 ... QuotaFailure: Cloud billing quota exceeded`, while linking its new project to the billing account.
+  Re-run alone: PASS (58.96s).
+
+GA, three tests in parallel:
+
+- `TestAccBillingBudgetsBudget_billingBudgetSpendCapExample`: PASS (57.38s).
+- `TestAccBillingBudget_spendCapAdd`: PASS (65.12s).
+- `TestAccBillingBudget_spendCapUpdate`: FAIL in step 1 with the same quota error. Re-run alone: PASS (102.52s).
+
+Cause: the test billing account had 3 linked projects and a low project-link quota. Three parallel project creations
+exceed it. This is not a code problem. As observed in the upstream test code, tests that create projects on `BILLING_ACCT`
+also run in parallel and do not throttle for this. This says nothing about the project-link quota in CI.
+
+Leftovers: budgets list empty before and after. All `tf-test-*` projects are in `DELETE_REQUESTED`.
+
+Review: an independent review accepted the change with three low findings on comments. They were fixed in
+`36a9f5c2e`, an earlier signed version of this commit since superseded by `19bf3bf26e` (comments only, verified by
+gofmt, generation and go vet, agent-reported).

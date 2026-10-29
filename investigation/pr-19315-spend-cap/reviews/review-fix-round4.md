@@ -1,4 +1,4 @@
-# Review round 4: fa51fc864 (google_billing_budget spend_cap CustomizeDiff refactor, unit test, docs)
+# Review round 4: 96a871a60 (google_billing_budget spend_cap CustomizeDiff refactor, unit test, docs)
 
 Verdict: **needs changes**. The code and the test are correct and pass, and gofmt/vet are clean. Two of the documentation sentences can mislead a user into re-arming a cap they lifted (both Medium).
 
@@ -19,7 +19,7 @@ Verdict: **needs changes**. The code and the test are correct and pass, and gofm
   - The helper forces a new budget on any change in length: FAILS on `spend_cap_removed`.
 - Command: `cd /home/user/tpgb && . /home/user/tools/env.sh && GOPROXY=direct go test ./google-beta/services/billingbudgets/ -run TestUnit -v`. Output: `--- PASS: TestUnitBillingBudget_spendCapAddedCustomizeDiff (0.00s)` with all 6 subtests PASS, then `ok .../services/billingbudgets 0.076s`.
 
-### 3. Descriptions (Budget.yaml at fa51fc864)
+### 3. Descriptions (Budget.yaml at 96a871a60)
 Checked against https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps. That page says: "You can't delete a spend cap budget while it's enforced." It also says that at the start of the period all spend cap budgets "automatically reset" and the status returns to Configured, and that "Enforced caps are lifted automatically."
 - "or the next period starts" (lines 570-572): **supported by inference only**. The page never says it in so many words, but an automatic reset ends ENFORCED, so the delete ban no longer applies. OK to keep.
 - The page does not use the term AWAITING_NEXT_PERIOD.
@@ -38,7 +38,7 @@ Checked against https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-
 | F2 | Medium | Budget.yaml:594-595 | "Re-applying `CONFIGURED` after a cap was lifted outside Terraform may re-activate the cap" is ambiguous. State already holds `CONFIGURED` and the API does not return the field, so a plain re-apply produces no diff and sends no PATCH. The real trigger is any later update of another field: pre_update/billing_budget.go.tmpl always adds `spendCap.inputState` to the mask. The statement is also unverified ("may"). The Google page says a manually lifted cap "won't trigger again for the rest of the budget period" unless the target amount is raised. | Change it to: "Any later Terraform update of the budget re-sends `input_state = CONFIGURED`, which may re-activate a cap lifted outside Terraform." Or verify the behavior and state it without "may". |
 | F3 | Low | Budget.yaml:570-571 | "cannot be deleted until the cap is lifted (`input_state = AWAITING_NEXT_PERIOD`)" does not say that the lift has to be applied before `terraform destroy`. A destroy alone sends no update. | Add "apply `input_state = AWAITING_NEXT_PERIOD` before destroying". |
 | F4 | Low | Budget.yaml:574-575 | "A spend cap cannot be added to an existing budget. Adding the block replaces the budget." can be one sentence. | "Adding a `spend_cap` block to an existing budget replaces the budget." |
-| F5 | Low (earlier commits in the range, not fa51fc864) | Budget.yaml:569 and 573-574 | The Google page does not support these. It says only the name, target amount, project and service can be edited on a spend cap budget, which conflicts with "only `input_state` can be changed" while enforced. It also never describes removing a cap. The "Removing the `spend_cap` block converts the budget back to an alerts-only budget" claim rests only on the acceptance test in resource_billing_budget_test.go. | Make sure an acceptance test covers removing the cap. Optionally reword line 569 so it does not contradict the page. |
+| F5 | Low (earlier commits in the range, not 96a871a60) | Budget.yaml:569 and 573-574 | The Google page does not support these. It says only the name, target amount, project and service can be edited on a spend cap budget, which conflicts with "only `input_state` can be changed" while enforced. It also never describes removing a cap. The "Removing the `spend_cap` block converts the budget back to an alerts-only budget" claim rests only on the acceptance test in resource_billing_budget_test.go. | Make sure an acceptance test covers removing the cap. Optionally reword line 569 so it does not contradict the page. |
 | F6 | Info | resource_billing_budget_internal_test.go | No test case covers a missing key or a nil value. The overlay test shows the helper already handles it. | Optionally add a case `before: nil, after: configured, forceNew: true`. |
 
 ## Changes outside /home/user/tpgb and the scratchpad

@@ -1,6 +1,6 @@
-# Adversarial review: commit cc69ec67b (billingbudgets spend_cap permadiff + update mask)
+# Adversarial review: commit 2a441756e (billingbudgets spend_cap permadiff + update mask)
 
-Artifact: `git show cc69ec67b` on branch claude/great-galileo-1gggv5 in /home/user/magic-modules.
+Artifact: `git show 2a441756e` on branch claude/great-galileo-1gggv5 in /home/user/magic-modules.
 Files: mmv1/products/billingbudgets/Budget.yaml, mmv1/templates/terraform/custom_flatten/billing_budget_spend_cap.go.tmpl,
 mmv1/templates/terraform/pre_update/billing_budget.go.tmpl, mmv1/third_party/terraform/services/billingbudgets/resource_billing_budget_test.go.
 

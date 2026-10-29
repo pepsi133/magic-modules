@@ -1,6 +1,6 @@
-# Adversarial review, round 2: spend_cap removal / mask / flatten (commits cc69ec67b + c3a311883)
+# Adversarial review, round 2: spend_cap removal / mask / flatten (commits 2a441756e + 5d93a7ccc)
 
-Scope: `git diff b1edf518a..c3a311883` restricted to Budget.yaml, custom_flatten/billing_budget_spend_cap.go.tmpl, pre_update/billing_budget.go.tmpl, resource_billing_budget_test.go. `git diff --stat b1edf518a..c3a311883 -- . ':!investigation'` shows exactly those 4 files (263 insertions, 1 deletion). No edits were made in /home/user/magic-modules (`git status --short` empty).
+Scope: `git diff b1edf518a..5d93a7ccc` restricted to Budget.yaml, custom_flatten/billing_budget_spend_cap.go.tmpl, pre_update/billing_budget.go.tmpl, resource_billing_budget_test.go. `git diff --stat b1edf518a..5d93a7ccc -- . ':!investigation'` shows exactly those 4 files (263 insertions, 1 deletion). No edits were made in /home/user/magic-modules (`git status --short` empty).
 
 ## Per attempt
 
